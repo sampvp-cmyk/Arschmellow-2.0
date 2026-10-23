@@ -476,77 +476,95 @@ function PlusSlot({ onClick }) {
 }
 
 // ── Marshmallow look ──────────────────────────────────────────────────────────
-// marshmallow colour by card value, matching the colours of the real cards
+// card panel colour by value, like the real cards
 const CARD_COLORS = [
-  { max:-1, body:"#ff8fc4", top:"#ffd6ea", ink:"#6e1442", tag:"✨" }, // -4, -2 pink
-  { max: 2, body:"#3fbf5f", top:"#a6ecb6", ink:"#0d3a1a", tag:null }, // 0–2 green
-  { max: 5, body:"#3a86e0", top:"#a9cdf7", ink:"#ffffff", tag:null }, // 3–5 blue
-  { max: 6, body:"#f4d03f", top:"#fff2a8", ink:"#5a4300", tag:null }, // 6 yellow
-  { max: 7, body:"#f39c34", top:"#ffd29c", ink:"#4a2500", tag:null }, // 7 orange
-  { max: 8, body:"#e5413a", top:"#ffaaa5", ink:"#ffffff", tag:null }, // 8 red
-  { max:11, body:"#1e1e24", top:"#5a5a66", ink:"#ffffff", tag:"🕶️" }, // 9–11 black (agents)
-  { max:99, body:"#8e44ad", top:"#d5a6ea", ink:"#ffffff", tag:"🔥" }, // 12–15 purple
+  { max:-1, body:"#ff8fc4", top:"#ffd6ea", ink:"#6e1442", badge:"#e0559a", label:"Party" },    // -4, -2 pink
+  { max: 2, body:"#8cc63f", top:"#c9e89a", ink:"#1f3a0a", badge:"#6aa52a", label:"Röststufe" }, // 0–2 green
+  { max: 5, body:"#5aa9e6", top:"#b5daf6", ink:"#0b2a45", badge:"#2f86cc", label:"Röststufe" }, // 3–5 blue
+  { max: 6, body:"#f6d04d", top:"#fff0a8", ink:"#4d3b00", badge:"#e8b21a", label:"Röststufe" }, // 6 yellow
+  { max: 7, body:"#f5a03c", top:"#ffd29c", ink:"#4a2500", badge:"#e07d12", label:"Röststufe" }, // 7 orange
+  { max: 8, body:"#e5413a", top:"#ffaaa5", ink:"#ffffff", badge:"#c0241e", label:"Röststufe" }, // 8 red
+  { max:11, body:"#1e1e24", top:"#5a5a66", ink:"#ffffff", badge:"#000000", label:"Aktion" },    // 9–11 black (agents)
+  { max:99, body:"#4b2fa0", top:"#8c74db", ink:"#ffffff", badge:"#1a1a1a", label:"Aktion" },    // 12–15 purple
 ];
 const roast = n => CARD_COLORS.find(c => n <= c.max);
 
-// little face: low cards are happy, 6–8 unsure, 9+ sad
-const MOUTHS = { happy:"M14 11 Q20 18 26 11", smile:"M15 12 Q20 16 25 12", flat:"M16 14 L24 14", sad:"M15 16 Q20 11 25 16" };
+// the marshmallow itself gets more toasted the higher the value
+const TOAST = ["#ffffff","#fdf8f0","#f7ecd8","#f0dcb8","#e9c995","#ddb07a","#c98f58","#a06a3c","#5a3820"];
+const toast = n => n < 0 || n > 8 ? "#ffffff" : TOAST[n];
 const isAgent = n => n >= 9 && n <= 11;
 
-// black cards (9–11) are secret agents: sunglasses and a cool smirk
-function AgentFace() {
-  return (
-    <svg viewBox="0 0 40 20" style={{ width:"70%", display:"block" }}>
-      <rect x="5" y="3" width="13" height="7" rx="3" fill="#000" stroke="#777" strokeWidth="0.8" />
-      <rect x="22" y="3" width="13" height="7" rx="3" fill="#000" stroke="#777" strokeWidth="0.8" />
-      <path d="M18 5.5 L22 5.5" stroke="#777" strokeWidth="1.2" />
-      <path d="M8 5 L11 4.2" stroke="#fff" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
-      <path d="M25 5 L28 4.2" stroke="#fff" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
-      <path d="M16 15 Q21 17 25 14" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" fill="none" />
-    </svg>
-  );
-}
-
-// white shirt collar with a black tie, sits on the black "jacket"
-function AgentSuit() {
-  return (
-    <svg viewBox="0 0 40 16" style={{ width:"58%", display:"block" }}>
-      <path d="M10 0 L30 0 L20 16 Z" fill="#fff" />
-      <path d="M10 0 L16 5 L20 1 L24 5 L30 0 Z" fill="#e8e8e8" />
-      <path d="M18.5 2 L21.5 2 L22.5 4.5 L20 5.5 L17.5 4.5 Z" fill="#111" />
-      <path d="M19 5.5 L21 5.5 L22.5 12 L20 15 L17.5 12 Z" fill="#111" />
-    </svg>
-  );
-}
-
-function Face({ n, ink }) {
-  if (isAgent(n)) return <AgentFace />;
-  const mood = n < 0 || n <= 2 ? "happy" : n <= 5 ? "smile" : n <= 8 ? "flat" : "sad";
-  return (
-    <svg viewBox="0 0 40 20" style={{ width:"64%", display:"block" }}>
-      <ellipse cx="7" cy="12" rx="3.4" ry="2" fill="#ff5a87" opacity="0.45" />
-      <ellipse cx="33" cy="12" rx="3.4" ry="2" fill="#ff5a87" opacity="0.45" />
-      <circle cx="12" cy="7" r="2.6" fill={ink} />
-      <circle cx="28" cy="7" r="2.6" fill={ink} />
-      <circle cx="12.9" cy="6.1" r="0.9" fill="#fff" opacity="0.9" />
-      <circle cx="28.9" cy="6.1" r="0.9" fill="#fff" opacity="0.9" />
-      <path d={MOUTHS[mood]} stroke={ink} strokeWidth="2" strokeLinecap="round" fill="none" />
-    </svg>
-  );
-}
-
+// cartoon marshmallow seen from behind-ish: puffy body, two cheeks at the bottom,
+// big eyes; low cards happy, 6–8 singed and scared, 9–11 secret agents, minus cards party
 function Marshmallow({ n, size }) {
-  const r = roast(n);
+  const fill = toast(n), line = "#3b2a20";
+  const agent = isAgent(n), party = n < 0, burnt = n >= 6 && n <= 8;
+  const mouth = party || n <= 2 ? "M24 34 Q30 41 36 34" : n <= 5 ? "M25 35 Q30 39 35 35" : agent ? "M26 36 Q31 38 35 34" : "M25 37 Q30 32 35 37";
   return (
-    <div style={{ width:size, aspectRatio:"1/1.08", borderRadius:"42% 42% 36% 36% / 30% 30% 26% 26%", background:`linear-gradient(180deg, ${r.top} 0%, ${r.body} 38%, ${r.body} 100%)`, boxShadow:"inset 0 -6px 10px rgba(0,0,0,0.18), inset 0 4px 6px rgba(255,255,255,0.5), 0 3px 6px rgba(0,0,0,0.25)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"0.12em", color:r.ink, fontWeight:700, fontSize:"1.15em", lineHeight:1 }}>
-      <Face n={n} ink={r.ink} />
-      {isAgent(n) ? <><span style={{ fontSize:"0.85em" }}>{n}</span><AgentSuit /></> : <span>{n}</span>}
-    </div>
+    <svg viewBox="0 0 60 72" style={{ width:size, display:"block", overflow:"visible" }}>
+      {burnt && <g opacity={0.6 + (n-6)*0.2}>
+        <path d="M-6 62 Q-8 46 -1 38 Q-2 50 3 52 Q2 42 8 36 Q10 52 6 64 Z" fill="#ff7a1a" />
+        <path d="M66 62 Q68 46 61 38 Q62 50 57 52 Q58 42 52 36 Q50 52 54 64 Z" fill="#ff7a1a" />
+        <path d="M-3 62 Q-4 54 0 50 Q1 57 5 58 Z" fill="#ffd23a" />
+        <path d="M63 62 Q64 54 60 50 Q59 57 55 58 Z" fill="#ffd23a" />
+      </g>}
+      {party && <g>
+        <path d="M22 9 L30 -10 L38 9 Z" fill="#ffd23a" stroke={line} strokeWidth="1.2" />
+        <path d="M25 2 L35 2 M27 -4 L33 -4" stroke="#e0559a" strokeWidth="2" />
+        <circle cx="30" cy="-11" r="2.5" fill="#e0559a" />
+      </g>}
+      {/* body with two cheeks at the bottom */}
+      <path d="M5 17 Q5 5 30 5 Q55 5 55 17 L55 51 Q55 66 42 66 Q33 66 30 59 Q27 66 18 66 Q5 66 5 51 Z" fill={fill} stroke={line} strokeWidth="1.6" />
+      <ellipse cx="30" cy="10.5" rx="20" ry="4" fill="#ffffff" opacity={n >= 7 && n <= 8 ? 0.15 : 0.7} />
+      <path d="M30 52 L30 59" stroke={line} strokeWidth="1.4" strokeLinecap="round" />
+      {burnt && <g fill="#3b2414" opacity={0.25 + (n-6)*0.2}>
+        <ellipse cx="17" cy="45" rx="4" ry="2.5" /><ellipse cx="42" cy="22" rx="3" ry="2" /><ellipse cx="40" cy="55" rx="4" ry="2.2" />
+      </g>}
+      {agent && <g>
+        {/* black suit, white shirt and tie */}
+        <path d="M5 40 L55 40 L55 51 Q55 66 42 66 Q33 66 30 59 Q27 66 18 66 Q5 66 5 51 Z" fill="#111" stroke={line} strokeWidth="1.6" />
+        <path d="M23 40 L37 40 L30 52 Z" fill="#fff" />
+        <path d="M28.6 41 L31.4 41 L32.2 47 L30 50 L27.8 47 Z" fill="#c0241e" />
+      </g>}
+      {/* eyes */}
+      {agent ? <g>
+        <rect x="15" y="18" width="13" height="8" rx="3" fill="#000" />
+        <rect x="32" y="18" width="13" height="8" rx="3" fill="#000" />
+        <path d="M28 21 L32 21" stroke="#000" strokeWidth="1.5" />
+        <path d="M18 20 L21 19.3 M35 20 L38 19.3" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
+      </g> : <g>
+        <ellipse cx="22" cy="23" rx="6" ry={burnt ? 7 : 6.4} fill="#fff" stroke={line} strokeWidth="1.2" />
+        <ellipse cx="38" cy="23" rx="6" ry={burnt ? 7 : 6.4} fill="#fff" stroke={line} strokeWidth="1.2" />
+        <circle cx="23" cy="24" r={burnt ? 2 : 3} fill="#222" />
+        <circle cx="37" cy="24" r={burnt ? 2 : 3} fill="#222" />
+        <circle cx="24" cy="22.5" r="1" fill="#fff" />
+        <circle cx="38" cy="22.5" r="1" fill="#fff" />
+      </g>}
+      {!agent && <g>
+        <ellipse cx="13" cy="31" rx="3.4" ry="1.9" fill="#ff5a87" opacity="0.4" />
+        <ellipse cx="47" cy="31" rx="3.4" ry="1.9" fill="#ff5a87" opacity="0.4" />
+      </g>}
+      <path d={mouth} stroke={line} strokeWidth="1.8" strokeLinecap="round" fill={party || n <= 2 ? "#c2185b" : "none"} />
+    </svg>
   );
 }
 
-// face-down card: raspberry back with dots
-const CARD_BACK = { background:"radial-gradient(circle at 50% 50%, rgba(255,255,255,0.16) 2px, transparent 2.5px) 0 0/12px 12px, linear-gradient(160deg,#e0457b,#a0174f)", border:"2px solid #ffd1e3" };
+// number badge like on the real cards; mirrored copy sits bottom right
+function Badge({ n, flip }) {
+  const r = roast(n), action = n > 8;
+  return (
+    <div style={{ position:"absolute", ...(flip ? { bottom:3, right:3, transform:"rotate(180deg)" } : { top:3, left:3 }), minWidth:18, height:18, padding:"0 3px", borderRadius:5, background:action ? "#fff" : r.badge, color:action ? "#111" : "#fff", border:"1.5px solid #fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, lineHeight:1, boxShadow:"0 1px 2px rgba(0,0,0,0.25)" }}>{n}</div>
+  );
+}
+
+// face-down card: lime back like the real game, with a dark swoosh
+const CARD_BACK = { background:"linear-gradient(160deg,#c8e04a,#9cbf1f)", border:"3px solid #fff" };
+const BackSwoosh = () => (
+  <svg viewBox="0 0 60 90" preserveAspectRatio="none" style={{ position:"absolute", inset:0, width:"100%", height:"100%" }}>
+    <path d="M-4 78 Q14 52 36 48 Q52 45 64 30 Q50 52 34 56 Q14 60 -4 86 Z" fill="#1d2a06" opacity="0.9" />
+    <path d="M2 30 Q18 24 30 14" stroke="#1d2a06" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.5" />
+  </svg>
+);
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 function Card({ value, index, onClick, shaking, highest }) {
@@ -554,14 +572,23 @@ function Card({ value, index, onClick, shaking, highest }) {
   const n = cardNum(value), r = n !== null ? roast(n) : null;
   const face = !empty && !forgot;
   return (
-    <div onClick={() => onClick(index)} className={shaking?"card-shake":""} style={{ position:"relative", outline:highest?"3px solid #f1c40f":fix?"3px solid #2ecc71":"none", outlineOffset:2, ...(face ? { background:"linear-gradient(170deg,#fff8ec,#f6e2c4)", border:"2px solid #e8c79c" } : CARD_BACK), filter:forgot?"grayscale(0.7) brightness(0.7)":"none", borderRadius:12, aspectRatio:"2/3", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", cursor:"pointer", transition:"all 0.2s", boxShadow:fix?"0 0 16px rgba(46,204,113,0.35)":"0 4px 10px rgba(0,0,0,0.35)", userSelect:"none", textAlign:"center", overflow:"hidden" }}>
-      {face && <span style={{ position:"absolute", top:4, left:7, fontSize:12, fontWeight:700, color:"#8a5a33" }}>{n}</span>}
-      {face && r.tag && <span style={{ position:"absolute", bottom:4, right:6, fontSize:12 }}>{r.tag}</span>}
-      {fix && <span style={{ position:"absolute", bottom:4, left:6, fontSize:12 }}>🔒</span>}
-      {face ? <Marshmallow n={n} size="62%" />
-        : forgot ? <span style={{fontSize:"1.9em"}}>💨</span>
-        : <span style={{ fontSize:"1.6em", fontWeight:700, color:"#ffe1ee", textShadow:"0 2px 4px rgba(0,0,0,0.3)" }}>?</span>}
-      {highest && <span style={{ position:"absolute", top:3, right:6, fontSize:11, color:"#d4a106" }}>▲</span>}
+    <div onClick={() => onClick(index)} className={shaking?"card-shake":""} style={{ position:"relative", outline:highest?"3px solid #f1c40f":fix?"3px solid #2ecc71":"none", outlineOffset:2, ...(face ? { background:"#fff", border:"3px solid #fff" } : CARD_BACK), filter:forgot?"grayscale(0.7) brightness(0.7)":"none", borderRadius:10, aspectRatio:"2/3", cursor:"pointer", transition:"all 0.2s", boxShadow:fix?"0 0 16px rgba(46,204,113,0.35)":"0 4px 10px rgba(0,0,0,0.35)", userSelect:"none", overflow:"hidden" }}>
+      {face ? (
+        <div style={{ position:"absolute", inset:0, borderRadius:7, background:`linear-gradient(180deg, ${r.top} 0%, ${r.body} 55%)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <Badge n={n} />
+          <div style={{ position:"absolute", top:6, left:24, fontSize:7, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase", color:r.ink, opacity:0.8 }}>{r.label}</div>
+          <Marshmallow n={n} size="64%" />
+          <Badge n={n} flip />
+        </div>
+      ) : (
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <BackSwoosh />
+          {forgot ? <span style={{position:"relative", fontSize:"1.9em"}}>💨</span>
+            : <span style={{ position:"relative", fontSize:"1.6em", fontWeight:700, color:"#fff", textShadow:"0 2px 4px rgba(0,0,0,0.35)" }}>?</span>}
+        </div>
+      )}
+      {fix && <span style={{ position:"absolute", bottom:4, left:5, fontSize:12 }}>🔒</span>}
+      {highest && <span style={{ position:"absolute", top:3, right:5, fontSize:11, color:"#d4a106", textShadow:"0 0 3px #fff" }}>▲</span>}
     </div>
   );
 }

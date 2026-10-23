@@ -13,4 +13,4 @@ Merk-Helfer für Arschmallows – Weiterentwicklung von [Arschmellow](https://gi
   - das Raster wächst immer als Viereck: neue Reihe oder Spalte erst, wenn alle Plätze voll sind
 - 🗑 Karte entfernen: ohne Nachfrage, der Platz bleibt frei
 - ⚙️ Einstellungen mit Speichern-Knopf: Sprache und Vergesslichkeit gelten erst nach dem Speichern und bleiben dann so
-- 🔥 Lagerfeuer-Design: Marshmallow-Karten mit Gesichtern in den Farben des Spiels (-4/-2 rosa, 0–2 grün, 3–5 blau, 6 gelb, 7 orange, 8 rot, 9–11 schwarz als Agenten mit Sonnenbrille und Krawatte, 12–15 lila)
+- 🔥 Karten im Look des Spiels: farbige Röststufen-Karten mit Cartoon-Marshmallows (-4/-2 rosa mit Partyhut, 0–2 grün, 3–5 blau, 6 gelb, 7 orange, 8 rot, 9–11 schwarz als Agenten, 12–15 lila), hellgrüne Rückseite
