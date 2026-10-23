@@ -9,3 +9,5 @@ Merk-Helfer für Arschmallows – Weiterentwicklung von [Arschmellow](https://gi
 - 📜 Runden-Verlauf mit Gesamtsumme und Durchschnitt
 - 🧠 Tipps: höchste Karte (▲ markiert), geschätzte Endsumme, Hinweis auf vergessene Karten
 - ↩ Rückgängig, wenn eine Karte vergessen wurde
+- ＋ Karte hinzufügen: Du wählst per Plus-Slot, wo die neue Karte hinkommt
+- 🗑 Karte entfernen: Karten nachrücken lassen oder Platz frei lassen

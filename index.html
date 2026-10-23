@@ -41,6 +41,7 @@
 const { useState, useEffect } = React;
 
 const FORGOT = "💨";
+const GAP    = "_GAP"; // free grid position without a card
 
 // ── Translations ──────────────────────────────────────────────────────────────
 const T = {
@@ -80,6 +81,11 @@ const T = {
     removeTitle: "Feld entfernen?",
     removeMsg: (i) => `Karte #${i+1} wirklich permanent entfernen?`,
     removeConfirm: "Entfernen",
+    removeShiftMsg: (i) => `Karte #${i+1} entfernen. Sollen die Karten dahinter nachrücken oder bleibt der Platz frei?`,
+    removeShift: "⇠ Nachrücken",
+    removeKeep: "▢ Platz frei lassen",
+    placeHint: "Tippe auf ein ＋, um dort eine Karte einzufügen",
+    placeCancel: "✕ Abbrechen",
     switchTitle: (label) => `Zu ${label} wechseln?`,
     switchMsg: (n) => `Das startet ein neues Spiel mit ${n} Karten. Alle aktuellen Karten gehen verloren.`,
     switchConfirm: "Wechseln",
@@ -148,6 +154,11 @@ const T = {
     removeTitle: "Remove slot?",
     removeMsg: (i) => `Permanently remove card #${i+1}?`,
     removeConfirm: "Remove",
+    removeShiftMsg: (i) => `Remove card #${i+1}. Should the cards after it move up, or should the spot stay empty?`,
+    removeShift: "⇠ Move up",
+    removeKeep: "▢ Keep spot empty",
+    placeHint: "Tap a ＋ to add a card there",
+    placeCancel: "✕ Cancel",
     switchTitle: (label) => `Switch to ${label}?`,
     switchMsg: (n) => `This starts a new game with ${n} cards. All current cards will be lost.`,
     switchConfirm: "Switch",
@@ -191,7 +202,9 @@ const isFix    = v => typeof v === "string" && v.startsWith("FIX:");
 const fixNum   = v => v ? v.replace("FIX:", "") : "";
 const isForgot = v => v === FORGOT;
 const isEmpty  = v => v === null;
-const isNormal = v => v !== null && !isForgot(v) && !isFix(v);
+const isGap    = v => v === GAP;
+const isNormal = v => v !== null && !isForgot(v) && !isFix(v) && !isGap(v);
+const trimGaps = arr => { const a=[...arr]; while (a.length && isGap(a[a.length-1])) a.pop(); return a; };
 const cardNum  = v => isNormal(v) ? parseInt(v, 10) : isFix(v) ? parseInt(fixNum(v), 10) : null;
 const fmtSigned = n => (n>0?"+":"") + n;
 
@@ -221,8 +234,23 @@ function Backdrop({ onClick, zIndex }) {
 }
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
-function Dialog({ icon, title, message, confirmLabel, confirmColor, cancelLabel, onConfirm, onCancel }) {
+function Dialog({ icon, title, message, confirmLabel, confirmColor, cancelLabel, onConfirm, onCancel, altLabel, onAlt }) {
   const cc = confirmColor || "#ff6b35";
+  const btn = { borderRadius:10, padding:"12px 0", fontSize:13, fontFamily:"'Courier New',monospace", fontWeight:900, cursor:"pointer" };
+  if (altLabel) return (
+    <div onClick={onCancel} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.82)", backdropFilter:"blur(5px)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:"#0f0f13", border:`2px solid ${cc}`, borderRadius:18, padding:"28px 24px 22px", width:"100%", maxWidth:320, boxShadow:`0 0 50px ${cc}44`, textAlign:"center" }}>
+        {icon && <div style={{ fontSize:38, marginBottom:12 }}>{icon}</div>}
+        <div style={{ fontSize:15, fontWeight:900, color:"#fff", letterSpacing:1, marginBottom:10 }}>{title}</div>
+        <div style={{ fontSize:12, color:"#666", lineHeight:1.75, marginBottom:24 }}>{message}</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <button onClick={onConfirm} style={{ ...btn, background:cc, color:"#fff", border:"none", boxShadow:`0 0 16px ${cc}55` }}>{confirmLabel}</button>
+          <button onClick={onAlt} style={{ ...btn, background:"#1a1a22", color:cc, border:`2px solid ${cc}` }}>{altLabel}</button>
+          <button onClick={onCancel} style={{ ...btn, background:"transparent", color:"#666", border:"1px solid #2a2a35" }}>{cancelLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
   return (
     <div onClick={onCancel} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.82)", backdropFilter:"blur(5px)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}>
       <div onClick={e => e.stopPropagation()} style={{ background:"#0f0f13", border:`2px solid ${cc}`, borderRadius:18, padding:"28px 24px 22px", width:"100%", maxWidth:320, boxShadow:`0 0 50px ${cc}44`, textAlign:"center" }}>
@@ -405,6 +433,17 @@ function CardModal({ index, currentValue, numbers, onSave, onAskRemove, onClose,
   );
 }
 
+// ── Slots ─────────────────────────────────────────────────────────────────────
+function GapSlot() {
+  return <div style={{ aspectRatio:"2/3", borderRadius:10, border:"1px solid #16161e" }} />;
+}
+
+function PlusSlot({ onClick }) {
+  return (
+    <div onClick={onClick} style={{ aspectRatio:"2/3", borderRadius:10, border:"2px dashed #2ecc71", background:"#0a2010", display:"flex", alignItems:"center", justifyContent:"center", color:"#2ecc71", fontSize:30, fontWeight:900, cursor:"pointer", boxShadow:"0 0 14px rgba(46,204,113,0.25)", userSelect:"none" }}>＋</div>
+  );
+}
+
 // ── Card ──────────────────────────────────────────────────────────────────────
 function Card({ value, index, onClick, shaking, highest }) {
   const empty=isEmpty(value), forgot=isForgot(value), fix=isFix(value), num=fix?fixNum(value):value;
@@ -431,6 +470,7 @@ function App() {
   const [forgetChance, setForgetChance] = useState(STORED.forgetChance);
   const [history, setHistory]         = useState(STORED.history);
   const [dlg, setDlg]                 = useState(null);
+  const [placeMode, setPlaceMode]     = useState(false);
 
   useEffect(() => { saveStore({ lang, mode, cards, forgetChance, history }); }, [lang, mode, cards, forgetChance, history]);
 
@@ -438,7 +478,22 @@ function App() {
   const numbers = MODES[mode].numbers;
 
   const askMode   = key => { if(key===mode) return; setShowSettings(false); setDlg({type:"mode", data:key}); };
-  const askRemove = idx => { setOpenCard(null); setDlg({type:"remove", data:idx}); };
+  const askRemove = idx => {
+    setOpenCard(null);
+    const cardsAfter = cards.slice(idx+1).some(v => !isGap(v));
+    setDlg({type: cardsAfter ? "removeShift" : "remove", data:idx});
+  };
+
+  // insert a new empty card at grid position idx (filling a gap or extending the grid)
+  const placeCard = idx => {
+    setCards(prev => {
+      const n = [...prev];
+      while (n.length < idx) n.push(GAP);
+      n[idx] = null;
+      return n;
+    });
+    setPlaceMode(false);
+  };
   const askReset  = ()  => { setDlg({type:"reset"}); };
   const askRound  = ()  => { setDlg({type:"round"}); };
   const askClearHistory = () => { setDlg({type:"clearHistory"}); };
@@ -446,7 +501,7 @@ function App() {
   const confirmDlg = () => {
     const d = dlg; setDlg(null);
     if (d.type==="mode")   { setMode(d.data); setCards(Array(MODES[d.data].startCards).fill(null)); setOpenCard(null); }
-    else if (d.type==="remove") { setCards(prev => prev.filter((_,i) => i!==d.data)); }
+    else if (d.type==="remove" || d.type==="removeShift") { setCards(prev => trimGaps(prev.filter((_,i) => i!==d.data))); }
     else if (d.type==="reset")  { setCards(Array(MODES[mode].startCards).fill(null)); }
     else if (d.type==="round")  {
       setHistory(prev => [...prev, { sum, mode, date: Date.now() }]);
@@ -454,6 +509,11 @@ function App() {
       setToast({ msg: t.toastRoundSaved(history.length+1, fmtSigned(sum)), type:"ok" });
     }
     else if (d.type==="clearHistory") { setHistory([]); }
+  };
+
+  const keepSpotDlg = () => {
+    const idx = dlg.data; setDlg(null);
+    setCards(prev => { const n=[...prev]; n[idx]=GAP; return trimGaps(n); });
   };
 
   const saveCard = val => {
@@ -481,7 +541,13 @@ function App() {
   const filled  = cards.filter(isNormal).length;
   const fixedC  = cards.filter(isFix).length;
   const forgotC = cards.filter(isForgot).length;
+  const slots   = cards.filter(v => !isGap(v)).length;
   const pct     = Math.round(forgetChance*100);
+
+  // in place mode: every gap plus the rest of the last row (or a new row) gets a ＋
+  const COLS = 3;
+  const tail = cards.length % COLS === 0 ? COLS : COLS - cards.length % COLS;
+  const tailSlots = placeMode ? Array.from({length: tail}, (_,k) => cards.length + k) : [];
 
   const sum = cards.reduce((acc, v) => acc + (cardNum(v) ?? 0), 0);
 
@@ -501,7 +567,7 @@ function App() {
         <div style={{ fontSize:10, letterSpacing:6, color:"#ff6b35", textTransform:"uppercase", marginBottom:4 }}>{t.tagline}</div>
         <h1 style={{ fontSize:26, fontWeight:900, color:"#fff", margin:0, letterSpacing:1 }}>ARSCHMALLOWS</h1>
         <div style={{ fontSize:10, color:"#f1c40f", marginTop:3, letterSpacing:2 }}>{MODES[mode].label.toUpperCase()}</div>
-        <div style={{ fontSize:11, color:"#555", marginTop:2, letterSpacing:1 }}>{cards.length} {t.statTotal}</div>
+        <div style={{ fontSize:11, color:"#555", marginTop:2, letterSpacing:1 }}>{slots} {t.statTotal}</div>
         <div style={{ fontSize:11, color:"#444", marginTop:2 }}>
           {t.forgetLabel}: <span style={{ color:pct===0?"#2ecc71":pct<40?"#f1c40f":"#ff4d6d" }}>{pct}%</span>
         </div>
@@ -515,13 +581,17 @@ function App() {
         <span style={{color:"#333"}}>·</span>
         <span style={{color:"#ff4d6d"}}>💨 {forgotC} {t.statForgot}</span>
         <span style={{color:"#333"}}>·</span>
-        <span style={{color:"#444"}}>○ {cards.length-filled-fixedC-forgotC} {t.statEmpty} · {cards.length} {t.statTotal}</span>
+        <span style={{color:"#444"}}>○ {slots-filled-fixedC-forgotC} {t.statEmpty} · {slots} {t.statTotal}</span>
       </div>
 
       {/* Grid */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, width:"100%", maxWidth:300, marginBottom:20 }}>
-        {cards.map((val,idx) => <Card key={idx} value={val} index={idx} onClick={setOpenCard} shaking={shakingIdx===idx} highest={highestIdx===idx} />)}
+        {cards.map((val,idx) => isGap(val)
+          ? (placeMode ? <PlusSlot key={idx} onClick={() => placeCard(idx)} /> : <GapSlot key={idx} />)
+          : <Card key={idx} value={val} index={idx} onClick={placeMode ? () => {} : setOpenCard} shaking={shakingIdx===idx} highest={highestIdx===idx} />)}
+        {tailSlots.map(idx => <PlusSlot key={"plus"+idx} onClick={() => placeCard(idx)} />)}
       </div>
+      {placeMode && <div style={{ fontSize:11, color:"#2ecc71", textAlign:"center", marginBottom:14 }}>{t.placeHint}</div>}
 
       {/* Hint */}
       <div style={{ fontSize:11, color:"#3a3a4a", textAlign:"center", marginBottom:14, lineHeight:1.9 }}>
@@ -531,7 +601,7 @@ function App() {
       </div>
 
       {/* Add card */}
-      <button onClick={()=>setCards(p=>[...p,null])} style={{ background:"#1a1a22", color:"#ff6b35", border:"2px dashed #ff6b35", borderRadius:10, padding:"11px 28px", fontSize:13, fontFamily:"'Courier New',monospace", fontWeight:900, cursor:"pointer", letterSpacing:2, marginBottom:10, width:"100%", maxWidth:300 }}>{t.addCard}</button>
+      <button onClick={()=>setPlaceMode(p=>!p)} style={{ background:"#1a1a22", color:placeMode?"#888":"#ff6b35", border:`2px dashed ${placeMode?"#444":"#ff6b35"}`, borderRadius:10, padding:"11px 28px", fontSize:13, fontFamily:"'Courier New',monospace", fontWeight:900, cursor:"pointer", letterSpacing:2, marginBottom:10, width:"100%", maxWidth:300 }}>{placeMode ? t.placeCancel : t.addCard}</button>
 
       {/* Sum */}
       <div style={{ width:"100%", maxWidth:300, marginBottom:14, background:"#16161e", border:"1px solid #2a2a35", borderRadius:12, padding:"14px 0", textAlign:"center" }}>
@@ -559,7 +629,8 @@ function App() {
       {openCard!==null && <CardModal index={openCard} currentValue={cards[openCard]} numbers={numbers} onSave={saveCard} onAskRemove={askRemove} onClose={()=>setOpenCard(null)} t={t} />}
       {toast && <Toast key={toast.msg} message={toast.msg} type={toast.type} action={toast.action} onDone={()=>setToast(null)} />}
 
-      {dlg&&dlg.type==="remove" && <Dialog icon="🗑" title={t.removeTitle} message={t.removeMsg(dlg.data)} confirmLabel={t.removeConfirm} confirmColor="#ff4d6d" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
+      {dlg&&dlg.type==="removeShift" && <Dialog icon="🗑" title={t.removeTitle} message={t.removeShiftMsg(dlg.data)} confirmLabel={t.removeShift} altLabel={t.removeKeep} onAlt={keepSpotDlg} confirmColor="#ff4d6d" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
+      {dlg&&dlg.type==="remove" &&<Dialog icon="🗑" title={t.removeTitle} message={t.removeMsg(dlg.data)} confirmLabel={t.removeConfirm} confirmColor="#ff4d6d" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
       {dlg&&dlg.type==="mode"   && <Dialog icon="🔀" title={t.switchTitle(MODES[dlg.data].label)} message={t.switchMsg(MODES[dlg.data].startCards)} confirmLabel={t.switchConfirm} confirmColor="#f1c40f" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
       {dlg&&dlg.type==="round"  && <Dialog icon="💾" title={t.roundTitle} message={t.roundMsg(fmtSigned(sum))} confirmLabel={t.roundConfirm} confirmColor="#2ecc71" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
       {dlg&&dlg.type==="clearHistory" && <Dialog icon="🗑" title={t.clearHistoryTitle} message={t.clearHistoryMsg} confirmLabel={t.clearHistoryConfirm} confirmColor="#ff4d6d" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
