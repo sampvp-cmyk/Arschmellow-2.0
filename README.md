@@ -13,3 +13,4 @@ Merk-Helfer für Arschmallows – Weiterentwicklung von [Arschmellow](https://gi
   - das Raster wächst immer als Viereck: neue Reihe oder Spalte erst, wenn alle Plätze voll sind
 - 🗑 Karte entfernen: ohne Nachfrage, der Platz bleibt frei
 - ⚙️ Einstellungen mit Speichern-Knopf: Sprache und Vergesslichkeit gelten erst nach dem Speichern und bleiben dann so
+- 🔥 Lagerfeuer-Design: Karten als Marshmallows in Röst-Stufen (roh → goldbraun → verbrannt), Kartenrücken für unbekannte Karten
