@@ -476,16 +476,18 @@ function PlusSlot({ onClick }) {
 }
 
 // ── Marshmallow look ──────────────────────────────────────────────────────────
-// roast colour by card value: raw white → golden → dark toast; above 8 burnt; negatives party pink
-const ROAST_STOPS = [[255,250,243],[248,226,180],[226,175,104],[176,110,56],[112,64,32]];
-function roast(n) {
-  if (n < 0) return { body:"#ff9ecb", top:"#ffe1f0", ink:"#7a1f4d", tag:"✨" };
-  if (n > 8) return { body:"#3b2216", top:"#7a4526", ink:"#ffd9b0", tag:"🔥" };
-  const p = n / 8 * (ROAST_STOPS.length - 1), i = Math.min(Math.floor(p), ROAST_STOPS.length - 2), f = p - i;
-  const mix = k => Math.round(ROAST_STOPS[i][k] + (ROAST_STOPS[i+1][k] - ROAST_STOPS[i][k]) * f);
-  const body = `rgb(${mix(0)},${mix(1)},${mix(2)})`;
-  return { body, top: n < 2 ? "#ffffff" : `rgb(${Math.min(255,mix(0)+40)},${Math.min(255,mix(1)+40)},${Math.min(255,mix(2)+40)})`, ink: n < 5 ? "#5a3418" : "#fff3e0", tag: null };
-}
+// marshmallow colour by card value, matching the colours of the real cards
+const CARD_COLORS = [
+  { max:-1, body:"#ff8fc4", top:"#ffd6ea", ink:"#6e1442", tag:"✨" }, // -4, -2 pink
+  { max: 2, body:"#3fbf5f", top:"#a6ecb6", ink:"#0d3a1a", tag:null }, // 0–2 green
+  { max: 5, body:"#3a86e0", top:"#a9cdf7", ink:"#ffffff", tag:null }, // 3–5 blue
+  { max: 6, body:"#f4d03f", top:"#fff2a8", ink:"#5a4300", tag:null }, // 6 yellow
+  { max: 7, body:"#f39c34", top:"#ffd29c", ink:"#4a2500", tag:null }, // 7 orange
+  { max: 8, body:"#e5413a", top:"#ffaaa5", ink:"#ffffff", tag:null }, // 8 red
+  { max:11, body:"#1e1e24", top:"#5a5a66", ink:"#ffffff", tag:"🔥" }, // 9–11 black
+  { max:99, body:"#8e44ad", top:"#d5a6ea", ink:"#ffffff", tag:"🔥" }, // 12–15 purple
+];
+const roast = n => CARD_COLORS.find(c => n <= c.max);
 
 function Marshmallow({ n, size }) {
   const r = roast(n);
