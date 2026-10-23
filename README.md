@@ -10,6 +10,6 @@ Merk-Helfer für Arschmallows – Weiterentwicklung von [Arschmellow](https://gi
 - 🧠 Tipps: höchste Karte (▲ markiert), geschätzte Endsumme, Hinweis auf vergessene Karten
 - ↩ Rückgängig, wenn eine Karte vergessen wurde
 - ＋ Karte hinzufügen: per Plus-Slot oben, unten, in Lücken oder an der Seite (max. 1 extra Spalte)
-  - neue Reihe oben/unten erst, wenn die angefangene Reihe voll ist
+  - das Raster wächst immer als Viereck: neue Reihe oder Spalte erst, wenn alle Plätze voll sind
 - 🗑 Karte entfernen: Karten nachrücken lassen oder Platz frei lassen
 - ⚙️ Einstellungen mit Speichern-Knopf: Sprache und Vergesslichkeit gelten erst nach dem Speichern und bleiben dann so

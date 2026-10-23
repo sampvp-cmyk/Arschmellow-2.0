@@ -84,7 +84,7 @@ const T = {
     removeShiftMsg: (i) => `Karte #${i+1} entfernen. Sollen die Karten dahinter nachrücken oder bleibt der Platz frei?`,
     removeShift: "⇠ Nachrücken",
     removeKeep: "▢ Platz frei lassen",
-    placeHint: "Tippe auf ein ＋ – oben, unten, in einer Lücke oder an der Seite (max. 1 extra Spalte)",
+    placeHint: "Tippe auf ein ＋. Neue Reihen oder die extra Spalte gibt es erst, wenn alle Plätze voll sind.",
     placeCancel: "✕ Abbrechen",
     switchTitle: (label) => `Zu ${label} wechseln?`,
     switchMsg: (n) => `Das startet ein neues Spiel mit ${n} Karten. Alle aktuellen Karten gehen verloren.`,
@@ -161,7 +161,7 @@ const T = {
     removeShiftMsg: (i) => `Remove card #${i+1}. Should the cards after it move up, or should the spot stay empty?`,
     removeShift: "⇠ Move up",
     removeKeep: "▢ Keep spot empty",
-    placeHint: "Tap a ＋ – top, bottom, in a gap or at the side (max. 1 extra column)",
+    placeHint: "Tap a ＋. New rows or the extra column only appear once every spot is filled.",
     placeCancel: "✕ Cancel",
     switchTitle: (label) => `Switch to ${label}?`,
     switchMsg: (n) => `This starts a new game with ${n} cards. All current cards will be lost.`,
@@ -608,15 +608,15 @@ function App() {
   let highestIdx = null;
   cards.forEach((v,i) => { if (isNormal(v) && cardNum(v) > avgNum && (highestIdx===null || cardNum(v) > cardNum(cards[highestIdx]))) highestIdx = i; });
 
-  // build the visible grid; in place mode it gets ＋ in every gap, a ＋ column on each side
-  // while an extra column is still allowed, and a new ＋ row above/below only once
-  // the current top/bottom row is full
+  // build the visible grid; in place mode it gets ＋ in every gap. The grid always grows
+  // as a rectangle: a new ＋ row above/below or the extra side column only appears
+  // once every spot of the current grid is filled
   const rows = Math.max(1, Math.ceil(cards.length / cols));
   const padded = padRows(cards, cols);
-  const rowFull = r => padded.length > 0 && padded.slice(r*cols, (r+1)*cols).every(v => !isGap(v));
-  const side = placeMode && cols < MAX_COLS ? 1 : 0;
-  const topRow = placeMode && rowFull(0) ? 1 : 0;
-  const bottomRow = placeMode && rowFull(rows-1) ? 1 : 0;
+  const complete = padded.length > 0 && padded.every(v => !isGap(v));
+  const side = placeMode && complete && cols < MAX_COLS ? 1 : 0;
+  const topRow = placeMode && complete ? 1 : 0;
+  const bottomRow = topRow;
   const dispCols = cols + 2*side;
   const cells = [];
   for (let r = -topRow; r < rows + bottomRow; r++) {
