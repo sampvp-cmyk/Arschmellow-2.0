@@ -553,7 +553,7 @@ function Marshmallow({ n, size }) {
 function Badge({ n, flip }) {
   const r = roast(n), action = n > 8;
   return (
-    <div style={{ position:"absolute", ...(flip ? { bottom:3, right:3, transform:"rotate(180deg)" } : { top:3, left:3 }), minWidth:18, height:18, padding:"0 3px", borderRadius:5, background:action ? "#fff" : r.badge, color:action ? "#111" : "#fff", border:"1.5px solid #fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, lineHeight:1, boxShadow:"0 1px 2px rgba(0,0,0,0.25)" }}>{n}</div>
+    <div style={{ position:"absolute", ...(flip ? { bottom:3, right:3, transform:"rotate(180deg)" } : { top:3, left:3 }), minWidth:28, height:28, padding:"0 4px", borderRadius:7, background:action ? "#fff" : r.badge, color:action ? "#111" : "#fff", border:"1.5px solid #fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, lineHeight:1, boxShadow:"0 1px 2px rgba(0,0,0,0.25)" }}>{n}</div>
   );
 }
 
@@ -576,8 +576,8 @@ function Card({ value, index, onClick, shaking, highest }) {
       {face ? (
         <div style={{ position:"absolute", inset:0, borderRadius:7, background:`linear-gradient(180deg, ${r.top} 0%, ${r.body} 55%)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <Badge n={n} />
-          <div style={{ position:"absolute", top:6, left:24, fontSize:7, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase", color:r.ink, opacity:0.8 }}>{r.label}</div>
-          <Marshmallow n={n} size="64%" />
+          <div style={{ position:"absolute", top:11, left:34, fontSize:7, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase", color:r.ink, opacity:0.8 }}>{r.label}</div>
+          <Marshmallow n={n} size="58%" />
           <Badge n={n} flip />
         </div>
       ) : (
