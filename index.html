@@ -495,13 +495,41 @@ const toast = n => n < 0 || n > 8 ? "#ffffff" : TOAST[n];
 const isAgent = n => n >= 9 && n <= 11;
 
 // cartoon marshmallow seen from behind-ish: puffy body, two cheeks at the bottom,
-// big eyes; low cards happy, 6–8 singed and scared, 9–11 secret agents, minus cards party
+// big eyes; low cards happy, 6–8 singed and scared, 9–11 secret agents, minus cards party,
+// action cards 12–15 laugh and each get their own prop
+const BODY = "M5 17 Q5 5 30 5 Q55 5 55 17 L55 51 Q55 66 42 66 Q33 66 30 59 Q27 66 18 66 Q5 66 5 51 Z";
+const LOWER = "M5 40 L55 40 L55 51 Q55 66 42 66 Q33 66 30 59 Q27 66 18 66 Q5 66 5 51 Z";
+
+// magnifying glass held at the side (mirrored with side="left")
+function Lupe({ side }) {
+  const m = side === "left" ? "translate(60 0) scale(-1 1)" : undefined;
+  return (
+    <g transform={m}>
+      <path d="M54 42 Q60 42 62 38" stroke="#3b2a20" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M67 44 L73 53" stroke="#5a3a1a" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="64" cy="38" r="7" fill="#cfeaff" fillOpacity="0.55" stroke="#444" strokeWidth="2" />
+      <path d="M60 35 Q62 33 65 33" stroke="#fff" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+    </g>
+  );
+}
+
 function Marshmallow({ n, size }) {
   const fill = toast(n), line = "#3b2a20";
   const agent = isAgent(n), party = n < 0, burnt = n >= 6 && n <= 8;
-  const mouth = party || n <= 2 ? "M24 34 Q30 41 36 34" : n <= 5 ? "M25 35 Q30 39 35 35" : agent ? "M26 36 Q31 38 35 34" : "M25 37 Q30 32 35 37";
+  const masked = n === 10 || n === 14, shades = agent && !masked;
+  const happy = party || n <= 2 || n >= 12;
+  const mouth = happy ? "M24 34 Q30 41 36 34" : n <= 5 ? "M25 35 Q30 39 35 35" : agent ? "M26 36 Q31 38 35 34" : "M25 37 Q30 32 35 37";
   return (
     <svg viewBox="0 0 60 72" style={{ width:size, display:"block", overflow:"visible" }}>
+      <defs>
+        <clipPath id="mm-body"><path d={BODY} /></clipPath>
+        <path id="mm-ring" d="M30 -4 A40 40 0 1 1 29.99 -4" />
+      </defs>
+      {n === 15 && <g>
+        {/* special aura */}
+        <circle cx="30" cy="36" r="40" fill="#ffd23a" fillOpacity="0.12" stroke="#ffd23a" strokeWidth="1.5" strokeDasharray="3 3" />
+        <text fontSize="7" fontWeight="700" fill="#ffd23a" letterSpacing="1.2"><textPath href="#mm-ring">✦ SPEZIAL ✦ SPEZIAL ✦ SPEZIAL ✦ SPEZIAL ✦</textPath></text>
+      </g>}
       {burnt && <g opacity={0.6 + (n-6)*0.2}>
         <path d="M-6 62 Q-8 46 -1 38 Q-2 50 3 52 Q2 42 8 36 Q10 52 6 64 Z" fill="#ff7a1a" />
         <path d="M66 62 Q68 46 61 38 Q62 50 57 52 Q58 42 52 36 Q50 52 54 64 Z" fill="#ff7a1a" />
@@ -514,7 +542,7 @@ function Marshmallow({ n, size }) {
         <circle cx="30" cy="-11" r="2.5" fill="#e0559a" />
       </g>}
       {/* body with two cheeks at the bottom */}
-      <path d="M5 17 Q5 5 30 5 Q55 5 55 17 L55 51 Q55 66 42 66 Q33 66 30 59 Q27 66 18 66 Q5 66 5 51 Z" fill={fill} stroke={line} strokeWidth="1.6" />
+      <path d={BODY} fill={fill} stroke={line} strokeWidth="1.6" />
       <ellipse cx="30" cy="10.5" rx="20" ry="4" fill="#ffffff" opacity={n >= 7 && n <= 8 ? 0.15 : 0.7} />
       <path d="M30 52 L30 59" stroke={line} strokeWidth="1.4" strokeLinecap="round" />
       {burnt && <g fill="#3b2414" opacity={0.25 + (n-6)*0.2}>
@@ -522,12 +550,28 @@ function Marshmallow({ n, size }) {
       </g>}
       {agent && <g>
         {/* black suit, white shirt and tie */}
-        <path d="M5 40 L55 40 L55 51 Q55 66 42 66 Q33 66 30 59 Q27 66 18 66 Q5 66 5 51 Z" fill="#111" stroke={line} strokeWidth="1.6" />
+        <path d={LOWER} fill="#111" stroke={line} strokeWidth="1.6" />
         <path d="M23 40 L37 40 L30 52 Z" fill="#fff" />
         <path d="M28.6 41 L31.4 41 L32.2 47 L30 50 L27.8 47 Z" fill="#c0241e" />
       </g>}
+      {n === 14 && <g>
+        {/* robber: striped shirt and black beanie */}
+        <path d={LOWER} fill="#fff" stroke={line} strokeWidth="1.6" />
+        <g clipPath="url(#mm-body)" fill="#111">
+          <rect x="0" y="43" width="60" height="3.5" /><rect x="0" y="50" width="60" height="3.5" /><rect x="0" y="57" width="60" height="3.5" /><rect x="0" y="64" width="60" height="3.5" />
+        </g>
+        <path d={LOWER} fill="none" stroke={line} strokeWidth="1.6" />
+        <path d="M5 15 Q5 1 30 1 Q55 1 55 15 Z" fill="#1a1a1a" stroke={line} strokeWidth="1.4" />
+        <rect x="4" y="12" width="52" height="5" rx="2.5" fill="#2e2e2e" stroke={line} strokeWidth="1.2" />
+        <circle cx="30" cy="0" r="3" fill="#2e2e2e" />
+      </g>}
       {/* eyes */}
-      {agent ? <g>
+      {masked && <g>
+        {/* bandit eye mask with straps */}
+        <path d="M2 21 L-5 18 M2 24 L-5 27 M58 21 L65 18 M58 24 L65 27" stroke="#111" strokeWidth="2" strokeLinecap="round" />
+        <rect x="6" y="15" width="48" height="16" rx="8" fill="#111" />
+      </g>}
+      {shades ? <g>
         <rect x="15" y="18" width="13" height="8" rx="3" fill="#000" />
         <rect x="32" y="18" width="13" height="8" rx="3" fill="#000" />
         <path d="M28 21 L32 21" stroke="#000" strokeWidth="1.5" />
@@ -544,7 +588,17 @@ function Marshmallow({ n, size }) {
         <ellipse cx="13" cy="31" rx="3.4" ry="1.9" fill="#ff5a87" opacity="0.4" />
         <ellipse cx="47" cy="31" rx="3.4" ry="1.9" fill="#ff5a87" opacity="0.4" />
       </g>}
-      <path d={mouth} stroke={line} strokeWidth="1.8" strokeLinecap="round" fill={party || n <= 2 ? "#c2185b" : "none"} />
+      <path d={mouth} stroke={line} strokeWidth="1.8" strokeLinecap="round" fill={happy ? "#c2185b" : "none"} />
+      {/* props */}
+      {(n === 9 || n === 13) && <Lupe side="right" />}
+      {n === 13 && <Lupe side="left" />}
+      {n === 12 && <g>
+        {/* two cards in hand */}
+        <path d="M54 42 Q60 41 62 36" stroke={line} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        <rect x="57" y="20" width="11" height="16" rx="2" fill="#b5d334" stroke="#fff" strokeWidth="1.4" transform="rotate(-14 62 28)" />
+        <rect x="61" y="21" width="11" height="16" rx="2" fill="#9cbf1f" stroke="#fff" strokeWidth="1.4" transform="rotate(12 66 29)" />
+        <circle cx="62" cy="36" r="2.6" fill={fill} stroke={line} strokeWidth="1.2" />
+      </g>}
     </svg>
   );
 }
