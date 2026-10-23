@@ -489,10 +489,30 @@ const CARD_COLORS = [
 ];
 const roast = n => CARD_COLORS.find(c => n <= c.max);
 
+// little face: low cards are happy, 6–8 unsure, 9+ sad
+const MOUTHS = { happy:"M14 11 Q20 18 26 11", smile:"M15 12 Q20 16 25 12", flat:"M16 14 L24 14", sad:"M15 16 Q20 11 25 16" };
+function Face({ n, ink }) {
+  const mood = n < 0 || n <= 2 ? "happy" : n <= 5 ? "smile" : n <= 8 ? "flat" : "sad";
+  return (
+    <svg viewBox="0 0 40 20" style={{ width:"64%", display:"block" }}>
+      <ellipse cx="7" cy="12" rx="3.4" ry="2" fill="#ff5a87" opacity="0.45" />
+      <ellipse cx="33" cy="12" rx="3.4" ry="2" fill="#ff5a87" opacity="0.45" />
+      <circle cx="12" cy="7" r="2.6" fill={ink} />
+      <circle cx="28" cy="7" r="2.6" fill={ink} />
+      <circle cx="12.9" cy="6.1" r="0.9" fill="#fff" opacity="0.9" />
+      <circle cx="28.9" cy="6.1" r="0.9" fill="#fff" opacity="0.9" />
+      <path d={MOUTHS[mood]} stroke={ink} strokeWidth="2" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
 function Marshmallow({ n, size }) {
   const r = roast(n);
   return (
-    <div style={{ width:size, aspectRatio:"1/1.08", borderRadius:"42% 42% 36% 36% / 30% 30% 26% 26%", background:`linear-gradient(180deg, ${r.top} 0%, ${r.body} 38%, ${r.body} 100%)`, boxShadow:"inset 0 -6px 10px rgba(0,0,0,0.18), inset 0 4px 6px rgba(255,255,255,0.5), 0 3px 6px rgba(0,0,0,0.25)", display:"flex", alignItems:"center", justifyContent:"center", color:r.ink, fontWeight:700, fontSize:"1.45em", lineHeight:1 }}>{n}</div>
+    <div style={{ width:size, aspectRatio:"1/1.08", borderRadius:"42% 42% 36% 36% / 30% 30% 26% 26%", background:`linear-gradient(180deg, ${r.top} 0%, ${r.body} 38%, ${r.body} 100%)`, boxShadow:"inset 0 -6px 10px rgba(0,0,0,0.18), inset 0 4px 6px rgba(255,255,255,0.5), 0 3px 6px rgba(0,0,0,0.25)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"0.12em", color:r.ink, fontWeight:700, fontSize:"1.15em", lineHeight:1 }}>
+      <Face n={n} ink={r.ink} />
+      <span>{n}</span>
+    </div>
   );
 }
 
