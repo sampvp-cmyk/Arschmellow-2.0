@@ -11,5 +11,5 @@ Merk-Helfer für Arschmallows – Weiterentwicklung von [Arschmellow](https://gi
 - ↩ Rückgängig, wenn eine Karte vergessen wurde
 - ＋ Karte hinzufügen: per Plus-Slot oben, unten, in Lücken oder an der Seite (max. 1 extra Spalte)
   - das Raster wächst immer als Viereck: neue Reihe oder Spalte erst, wenn alle Plätze voll sind
-- 🗑 Karte entfernen: Karten nachrücken lassen oder Platz frei lassen
+- 🗑 Karte entfernen: ohne Nachfrage, der Platz bleibt frei
 - ⚙️ Einstellungen mit Speichern-Knopf: Sprache und Vergesslichkeit gelten erst nach dem Speichern und bleiben dann so
