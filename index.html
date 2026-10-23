@@ -84,7 +84,7 @@ const T = {
     removeShiftMsg: (i) => `Karte #${i+1} entfernen. Sollen die Karten dahinter nachrücken oder bleibt der Platz frei?`,
     removeShift: "⇠ Nachrücken",
     removeKeep: "▢ Platz frei lassen",
-    placeHint: "Tippe auf ein ＋, um dort eine Karte einzufügen",
+    placeHint: "Tippe auf ein ＋ – oben, unten, in einer Lücke oder an der Seite (max. 1 extra Spalte)",
     placeCancel: "✕ Abbrechen",
     switchTitle: (label) => `Zu ${label} wechseln?`,
     switchMsg: (n) => `Das startet ein neues Spiel mit ${n} Karten. Alle aktuellen Karten gehen verloren.`,
@@ -157,7 +157,7 @@ const T = {
     removeShiftMsg: (i) => `Remove card #${i+1}. Should the cards after it move up, or should the spot stay empty?`,
     removeShift: "⇠ Move up",
     removeKeep: "▢ Keep spot empty",
-    placeHint: "Tap a ＋ to add a card there",
+    placeHint: "Tap a ＋ – top, bottom, in a gap or at the side (max. 1 extra column)",
     placeCancel: "✕ Cancel",
     switchTitle: (label) => `Switch to ${label}?`,
     switchMsg: (n) => `This starts a new game with ${n} cards. All current cards will be lost.`,
@@ -205,6 +205,36 @@ const isEmpty  = v => v === null;
 const isGap    = v => v === GAP;
 const isNormal = v => v !== null && !isForgot(v) && !isFix(v) && !isGap(v);
 const trimGaps = arr => { const a=[...arr]; while (a.length && isGap(a[a.length-1])) a.pop(); return a; };
+
+// ── Grid layout ───────────────────────────────────────────────────────────────
+// cards are stored row by row; the grid has BASE_COLS columns, plus at most one extra side column
+const BASE_COLS = 3;
+const MAX_COLS  = 4;
+const padRows = (arr, cols) => { const a=[...arr]; while (a.length % cols) a.push(GAP); return a; };
+const colEmpty = (a, cols, c) => { for (let i=c; i<a.length; i+=cols) if (!isGap(a[i])) return false; return true; };
+const dropCol = (a, cols, c) => a.filter((_,i) => i % cols !== c);
+
+// remove empty edge columns/rows so the grid stays tidy
+function normalize(arr, cols) {
+  let a = padRows(arr, cols);
+  if (cols > BASE_COLS) {
+    if (colEmpty(a, cols, cols-1)) { a = dropCol(a, cols, cols-1); cols--; }
+    else if (colEmpty(a, cols, 0)) { a = dropCol(a, cols, 0); cols--; }
+  }
+  while (a.length >= cols && a.slice(0, cols).every(isGap)) a = a.slice(cols);
+  return { cards: trimGaps(a), cols };
+}
+
+const newRow = (cols, c) => Array.from({length: cols}, (_,k) => k===c ? null : GAP);
+
+function addSide(arr, cols, side, row) {
+  const a = padRows(arr, cols), out = [];
+  for (let r=0; r*cols < a.length; r++) {
+    const cells = a.slice(r*cols, (r+1)*cols), extra = r===row ? null : GAP;
+    out.push(...(side==="left" ? [extra, ...cells] : [...cells, extra]));
+  }
+  return out;
+}
 const cardNum  = v => isNormal(v) ? parseInt(v, 10) : isFix(v) ? parseInt(fixNum(v), 10) : null;
 const fmtSigned = n => (n>0?"+":"") + n;
 
@@ -218,9 +248,10 @@ function loadStore() {
     if (!Array.isArray(s.cards)) s.cards = Array(MODES[s.mode].startCards).fill(null);
     if (typeof s.forgetChance !== "number") s.forgetChance = 0.25;
     if (!Array.isArray(s.history)) s.history = [];
+    if (s.cols !== BASE_COLS && s.cols !== MAX_COLS) s.cols = BASE_COLS;
     return s;
   } catch {
-    return { mode:"normal", lang:"de", cards:Array(MODES.normal.startCards).fill(null), forgetChance:0.25, history:[] };
+    return { mode:"normal", lang:"de", cards:Array(MODES.normal.startCards).fill(null), cols:BASE_COLS, forgetChance:0.25, history:[] };
   }
 }
 function saveStore(data) {
@@ -463,6 +494,7 @@ function App() {
   const [lang, setLang]               = useState(STORED.lang);
   const [mode, setMode]               = useState(STORED.mode);
   const [cards, setCards]             = useState(STORED.cards);
+  const [cols, setCols]               = useState(STORED.cols);
   const [openCard, setOpenCard]       = useState(null);
   const [toast, setToast]             = useState(null);
   const [shakingIdx, setShakingIdx]   = useState(null);
@@ -472,7 +504,10 @@ function App() {
   const [dlg, setDlg]                 = useState(null);
   const [placeMode, setPlaceMode]     = useState(false);
 
-  useEffect(() => { saveStore({ lang, mode, cards, forgetChance, history }); }, [lang, mode, cards, forgetChance, history]);
+  useEffect(() => { saveStore({ lang, mode, cards, cols, forgetChance, history }); }, [lang, mode, cards, cols, forgetChance, history]);
+
+  const setGrid = (arr, c) => { const g = normalize(arr, c); setCards(g.cards); setCols(g.cols); };
+  const freshGrid = m => { setCards(Array(MODES[m].startCards).fill(null)); setCols(BASE_COLS); };
 
   const t = T[lang];
   const numbers = MODES[mode].numbers;
@@ -484,14 +519,13 @@ function App() {
     setDlg({type: cardsAfter ? "removeShift" : "remove", data:idx});
   };
 
-  // insert a new empty card at grid position idx (filling a gap or extending the grid)
-  const placeCard = idx => {
-    setCards(prev => {
-      const n = [...prev];
-      while (n.length < idx) n.push(GAP);
-      n[idx] = null;
-      return n;
-    });
+  // add a new empty card: in a gap, as a new top/bottom row, or in an extra side column
+  const placeCard = action => {
+    const a = padRows(cards, cols);
+    if (action.type==="cell")        { a[action.idx] = null; setGrid(a, cols); }
+    else if (action.type==="top")    { setGrid([...newRow(cols, action.col), ...a], cols); }
+    else if (action.type==="bottom") { setGrid([...a, ...newRow(cols, action.col)], cols); }
+    else if (action.type==="side")   { setGrid(addSide(a, cols, action.side, action.row), cols+1); }
     setPlaceMode(false);
   };
   const askReset  = ()  => { setDlg({type:"reset"}); };
@@ -500,12 +534,12 @@ function App() {
 
   const confirmDlg = () => {
     const d = dlg; setDlg(null);
-    if (d.type==="mode")   { setMode(d.data); setCards(Array(MODES[d.data].startCards).fill(null)); setOpenCard(null); }
-    else if (d.type==="remove" || d.type==="removeShift") { setCards(prev => trimGaps(prev.filter((_,i) => i!==d.data))); }
-    else if (d.type==="reset")  { setCards(Array(MODES[mode].startCards).fill(null)); }
+    if (d.type==="mode")   { setMode(d.data); freshGrid(d.data); setOpenCard(null); }
+    else if (d.type==="remove" || d.type==="removeShift") { setGrid(cards.filter((_,i) => i!==d.data), cols); }
+    else if (d.type==="reset")  { freshGrid(mode); }
     else if (d.type==="round")  {
       setHistory(prev => [...prev, { sum, mode, date: Date.now() }]);
-      setCards(Array(MODES[mode].startCards).fill(null));
+      freshGrid(mode);
       setToast({ msg: t.toastRoundSaved(history.length+1, fmtSigned(sum)), type:"ok" });
     }
     else if (d.type==="clearHistory") { setHistory([]); }
@@ -513,7 +547,7 @@ function App() {
 
   const keepSpotDlg = () => {
     const idx = dlg.data; setDlg(null);
-    setCards(prev => { const n=[...prev]; n[idx]=GAP; return trimGaps(n); });
+    const n = [...cards]; n[idx] = GAP; setGrid(n, cols);
   };
 
   const saveCard = val => {
@@ -544,17 +578,32 @@ function App() {
   const slots   = cards.filter(v => !isGap(v)).length;
   const pct     = Math.round(forgetChance*100);
 
-  // in place mode: every gap plus the rest of the last row (or a new row) gets a ＋
-  const COLS = 3;
-  const tail = cards.length % COLS === 0 ? COLS : COLS - cards.length % COLS;
-  const tailSlots = placeMode ? Array.from({length: tail}, (_,k) => cards.length + k) : [];
-
   const sum = cards.reduce((acc, v) => acc + (cardNum(v) ?? 0), 0);
 
   // highest swappable card above the deck average gets a marker
   const avgNum = numbers.reduce((a,b) => a+b, 0) / numbers.length;
   let highestIdx = null;
   cards.forEach((v,i) => { if (isNormal(v) && cardNum(v) > avgNum && (highestIdx===null || cardNum(v) > cardNum(cards[highestIdx]))) highestIdx = i; });
+
+  // build the visible grid; in place mode it gets a ＋ row above and below,
+  // ＋ in every gap, and a ＋ column on each side while an extra column is still allowed
+  const rows = Math.max(1, Math.ceil(cards.length / cols));
+  const side = placeMode && cols < MAX_COLS ? 1 : 0;
+  const extraRow = placeMode ? 1 : 0;
+  const dispCols = cols + 2*side;
+  const cells = [];
+  for (let r = -extraRow; r < rows + extraRow; r++) {
+    for (let c = -side; c < cols + side; c++) {
+      const key = r + ":" + c;
+      const inRow = r >= 0 && r < rows, inCol = c >= 0 && c < cols;
+      if (!inRow && !inCol) { cells.push(<div key={key} />); continue; }
+      if (!inRow) { cells.push(<PlusSlot key={key} onClick={() => placeCard({ type: r < 0 ? "top" : "bottom", col: c })} />); continue; }
+      if (!inCol) { cells.push(<PlusSlot key={key} onClick={() => placeCard({ type:"side", side: c < 0 ? "left" : "right", row: r })} />); continue; }
+      const idx = r*cols + c, val = idx < cards.length ? cards[idx] : GAP;
+      if (isGap(val)) cells.push(placeMode ? <PlusSlot key={key} onClick={() => placeCard({ type:"cell", idx })} /> : <GapSlot key={key} />);
+      else cells.push(<Card key={key} value={val} index={idx} onClick={placeMode ? () => {} : setOpenCard} shaking={shakingIdx===idx} highest={highestIdx===idx} />);
+    }
+  }
 
   return (
     <div style={{ minHeight:"100vh", background:"#0b0b0f", backgroundImage:"radial-gradient(ellipse at 15% 15%,rgba(255,107,53,0.06) 0%,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(90,10,30,0.1) 0%,transparent 55%)", display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 20px 48px", position:"relative" }}>
@@ -585,11 +634,8 @@ function App() {
       </div>
 
       {/* Grid */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, width:"100%", maxWidth:300, marginBottom:20 }}>
-        {cards.map((val,idx) => isGap(val)
-          ? (placeMode ? <PlusSlot key={idx} onClick={() => placeCard(idx)} /> : <GapSlot key={idx} />)
-          : <Card key={idx} value={val} index={idx} onClick={placeMode ? () => {} : setOpenCard} shaking={shakingIdx===idx} highest={highestIdx===idx} />)}
-        {tailSlots.map(idx => <PlusSlot key={"plus"+idx} onClick={() => placeCard(idx)} />)}
+      <div className="card-grid" style={{ display:"grid", gridTemplateColumns:`repeat(${dispCols},1fr)`, gap:10, width:"100%", maxWidth:dispCols*100, marginBottom:20 }}>
+        {cells}
       </div>
       {placeMode && <div style={{ fontSize:11, color:"#2ecc71", textAlign:"center", marginBottom:14 }}>{t.placeHint}</div>}
 
