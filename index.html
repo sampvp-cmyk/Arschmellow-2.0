@@ -88,6 +88,29 @@ const T = {
     resetConfirm: "Neues Spiel",
     toastForgot: (saved, victim) => `Während du Karte ${saved+1} eingetragen hast… vergaß ich Karte ${victim+1}. 🤦`,
     modeSub: { normal: "6 Karten · -4, -2, 0–10", xxl: "9 Karten · -4, -2, 0–15" },
+    sum: "∑ Summe",
+    undo: "↩ Rückgängig",
+    toastRestored: (i) => `Karte ${i+1} wiederhergestellt. 🧠`,
+    tipsTitle: "🧠 Tipps",
+    tipHighest: (i, v) => `Höchste Karte: #${i+1} (${v}) – zuerst tauschen`,
+    tipEstimate: (n, est) => `${n} unbekannt · geschätzte Endsumme ≈ ${est}`,
+    tipForgot: (n) => `💨 ${n} vergessen – nochmal nachschauen!`,
+    tipAllKnown: "Alle Karten bekannt 👌",
+    tipNone: "Trag Karten ein, dann gibt's Tipps.",
+    saveRound: "💾 Runde speichern",
+    roundTitle: "Runde speichern?",
+    roundMsg: (s) => `Summe ${s} wird im Verlauf gespeichert. Danach startet eine neue Runde.`,
+    roundConfirm: "Speichern",
+    toastRoundSaved: (n, s) => `Runde ${n} gespeichert: ${s} ✓`,
+    history: "📜 Verlauf",
+    historyEmpty: "Noch keine Runden gespeichert.",
+    historyStats: (n, total, avg) => `${n} Runden · gesamt ${total} · Ø ${avg}`,
+    roundLabel: (n) => `Runde ${n}`,
+    clearHistory: "Verlauf löschen",
+    clearHistoryTitle: "Verlauf löschen?",
+    clearHistoryMsg: "Alle gespeicherten Runden werden gelöscht.",
+    clearHistoryConfirm: "Löschen",
+    savedHint: "💾 wird automatisch gespeichert",
   },
   en: {
     tagline: "★ Memory Helper ★",
@@ -133,6 +156,29 @@ const T = {
     resetConfirm: "New Game",
     toastForgot: (saved, victim) => `While entering card ${saved+1}… I forgot card ${victim+1}. 🤦`,
     modeSub: { normal: "6 cards · -4, -2, 0–10", xxl: "9 cards · -4, -2, 0–15" },
+    sum: "∑ Sum",
+    undo: "↩ Undo",
+    toastRestored: (i) => `Card ${i+1} restored. 🧠`,
+    tipsTitle: "🧠 Tips",
+    tipHighest: (i, v) => `Highest card: #${i+1} (${v}) – swap it first`,
+    tipEstimate: (n, est) => `${n} unknown · estimated final sum ≈ ${est}`,
+    tipForgot: (n) => `💨 ${n} forgotten – take another look!`,
+    tipAllKnown: "All cards known 👌",
+    tipNone: "Enter some cards to get tips.",
+    saveRound: "💾 Save Round",
+    roundTitle: "Save round?",
+    roundMsg: (s) => `Sum ${s} will be saved to the history. Then a new round starts.`,
+    roundConfirm: "Save",
+    toastRoundSaved: (n, s) => `Round ${n} saved: ${s} ✓`,
+    history: "📜 History",
+    historyEmpty: "No rounds saved yet.",
+    historyStats: (n, total, avg) => `${n} rounds · total ${total} · avg ${avg}`,
+    roundLabel: (n) => `Round ${n}`,
+    clearHistory: "Clear history",
+    clearHistoryTitle: "Clear history?",
+    clearHistoryMsg: "All saved rounds will be deleted.",
+    clearHistoryConfirm: "Clear",
+    savedHint: "💾 saved automatically",
   }
 };
 
@@ -146,6 +192,28 @@ const fixNum   = v => v ? v.replace("FIX:", "") : "";
 const isForgot = v => v === FORGOT;
 const isEmpty  = v => v === null;
 const isNormal = v => v !== null && !isForgot(v) && !isFix(v);
+const cardNum  = v => isNormal(v) ? parseInt(v, 10) : isFix(v) ? parseInt(fixNum(v), 10) : null;
+const fmtSigned = n => (n>0?"+":"") + n;
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+const STORE_KEY = "arschmallows2";
+function loadStore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+    if (!MODES[s.mode]) s.mode = "normal";
+    if (!T[s.lang]) s.lang = "de";
+    if (!Array.isArray(s.cards)) s.cards = Array(MODES[s.mode].startCards).fill(null);
+    if (typeof s.forgetChance !== "number") s.forgetChance = 0.25;
+    if (!Array.isArray(s.history)) s.history = [];
+    return s;
+  } catch {
+    return { mode:"normal", lang:"de", cards:Array(MODES.normal.startCards).fill(null), forgetChance:0.25, history:[] };
+  }
+}
+function saveStore(data) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch {}
+}
+const STORED = loadStore();
 
 // ── Backdrop ──────────────────────────────────────────────────────────────────
 function Backdrop({ onClick, zIndex }) {
@@ -171,11 +239,60 @@ function Dialog({ icon, title, message, confirmLabel, confirmColor, cancelLabel,
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-function Toast({ message, type, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, []);
+function Toast({ message, type, action, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, action ? 5000 : 3200); return () => clearTimeout(t); }, [message]);
   const s = type==="forgot" ? { bg:"#590d22", border:"#ff4d6d", color:"#ff4d6d" } : { bg:"#0a2e1a", border:"#2ecc71", color:"#2ecc71" };
   return (
-    <div style={{ position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:s.bg, border:`2px solid ${s.border}`, borderRadius:12, padding:"13px 22px", color:s.color, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:13, zIndex:400, boxShadow:`0 0 30px ${s.border}44`, animation:"toastIn 0.3s ease", maxWidth:"88vw", textAlign:"center", lineHeight:1.5 }}>{message}</div>
+    <div style={{ position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:s.bg, border:`2px solid ${s.border}`, borderRadius:12, padding:"13px 22px", color:s.color, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:13, zIndex:400, boxShadow:`0 0 30px ${s.border}44`, animation:"toastIn 0.3s ease", maxWidth:"88vw", textAlign:"center", lineHeight:1.5 }}>
+      {message}
+      {action && <button onClick={() => { action.onClick(); onDone(); }} style={{ display:"block", margin:"10px auto 0", background:"transparent", color:s.color, border:`1px solid ${s.border}`, borderRadius:8, padding:"6px 16px", fontSize:12, fontFamily:"'Courier New',monospace", fontWeight:900, cursor:"pointer" }}>{action.label}</button>}
+    </div>
+  );
+}
+
+// ── Tips ──────────────────────────────────────────────────────────────────────
+function Tips({ cards, numbers, sum, t }) {
+  const known = cards.map((v,i) => ({ i, n: cardNum(v), fix: isFix(v) })).filter(c => c.n !== null);
+  const unknown = cards.filter(v => isEmpty(v) || isForgot(v)).length;
+  const forgotC = cards.filter(isForgot).length;
+  const avg = numbers.reduce((a,b) => a+b, 0) / numbers.length;
+  const swappable = known.filter(c => !c.fix);
+  const highest = swappable.length ? swappable.reduce((a,b) => b.n > a.n ? b : a) : null;
+  const lines = [];
+  if (!known.length) lines.push(t.tipNone);
+  else {
+    if (highest && highest.n > avg) lines.push(t.tipHighest(highest.i, highest.n));
+    lines.push(unknown ? t.tipEstimate(unknown, fmtSigned(Math.round(sum + unknown*avg))) : t.tipAllKnown);
+  }
+  if (forgotC) lines.push(t.tipForgot(forgotC));
+  return (
+    <div style={{ width:"100%", maxWidth:300, marginBottom:14, background:"#14141c", border:"1px solid #2a2a35", borderLeft:"3px solid #f1c40f", borderRadius:12, padding:"12px 14px" }}>
+      <div style={{ fontSize:11, color:"#f1c40f", letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>{t.tipsTitle}</div>
+      {lines.map((l,k) => <div key={k} style={{ fontSize:11, color:"#999", lineHeight:1.7 }}>{l}</div>)}
+    </div>
+  );
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+function History({ history, onAskClear, t }) {
+  const total = history.reduce((a,r) => a + r.sum, 0);
+  const avg = history.length ? Math.round(total / history.length * 10) / 10 : 0;
+  return (
+    <div style={{ width:"100%", maxWidth:300, marginTop:14, background:"#16161e", border:"1px solid #2a2a35", borderRadius:12, padding:"14px" }}>
+      <div style={{ fontSize:11, color:"#aaa", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>{t.history}</div>
+      {!history.length ? <div style={{ fontSize:11, color:"#444" }}>{t.historyEmpty}</div> : <>
+        <div style={{ fontSize:11, color:"#f1c40f", marginBottom:8 }}>{t.historyStats(history.length, fmtSigned(total), avg)}</div>
+        <div style={{ maxHeight:180, overflowY:"auto" }}>
+          {history.map((r,k) => ({ r, n: k+1 })).reverse().map(({ r, n }) => (
+            <div key={n} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#777", padding:"4px 0", borderTop:"1px solid #1f1f28" }}>
+              <span>{t.roundLabel(n)} · {MODES[r.mode] ? MODES[r.mode].label : r.mode}</span>
+              <span style={{ color: r.sum>0?"#ff6b35":r.sum<0?"#2ecc71":"#666", fontWeight:900 }}>{fmtSigned(r.sum)}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={onAskClear} style={{ marginTop:10, width:"100%", background:"transparent", color:"#555", border:"1px solid #2a2a35", borderRadius:8, padding:"8px 0", fontSize:11, fontFamily:"'Courier New',monospace", cursor:"pointer" }}>{t.clearHistory}</button>
+      </>}
+    </div>
   );
 }
 
@@ -289,29 +406,33 @@ function CardModal({ index, currentValue, numbers, onSave, onAskRemove, onClose,
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-function Card({ value, index, onClick, shaking }) {
+function Card({ value, index, onClick, shaking, highest }) {
   const empty=isEmpty(value), forgot=isForgot(value), fix=isFix(value), num=fix?fixNum(value):value;
   return (
-    <div onClick={() => onClick(index)} className={shaking?"card-shake":""} style={{ background:forgot?"#590d22":fix?"#0a2010":empty?"#16161e":"#1e1e2e", border:`2px solid ${forgot?"#ff4d6d":fix?"#2ecc71":empty?"#2a2a35":"#ff6b35"}`, borderStyle:empty?"dashed":"solid", borderRadius:10, aspectRatio:"2/3", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:2, cursor:"pointer", color:forgot?"#ff4d6d":fix?"#2ecc71":empty?"#333":"#fff", fontFamily:"'Courier New',monospace", transition:"all 0.2s", boxShadow:forgot?"0 0 20px rgba(255,77,109,0.35)":fix?"0 0 14px rgba(46,204,113,0.2)":!empty?"0 0 10px rgba(255,107,53,0.12)":"none", userSelect:"none", padding:4, textAlign:"center", overflow:"hidden" }}>
+    <div onClick={() => onClick(index)} className={shaking?"card-shake":""} style={{ position:"relative", outline:highest?"2px solid #f1c40f":"none", outlineOffset:2, background:forgot?"#590d22":fix?"#0a2010":empty?"#16161e":"#1e1e2e", border:`2px solid ${forgot?"#ff4d6d":fix?"#2ecc71":empty?"#2a2a35":"#ff6b35"}`, borderStyle:empty?"dashed":"solid", borderRadius:10, aspectRatio:"2/3", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:2, cursor:"pointer", color:forgot?"#ff4d6d":fix?"#2ecc71":empty?"#333":"#fff", fontFamily:"'Courier New',monospace", transition:"all 0.2s", boxShadow:forgot?"0 0 20px rgba(255,77,109,0.35)":fix?"0 0 14px rgba(46,204,113,0.2)":!empty?"0 0 10px rgba(255,107,53,0.12)":"none", userSelect:"none", padding:4, textAlign:"center", overflow:"hidden" }}>
       {forgot ? <span style={{fontSize:"1.8em"}}>💨</span>
         : empty ? <span style={{fontSize:"1.2em",color:"#333"}}>·</span>
         : fix   ? <><span style={{fontSize:"0.65em",letterSpacing:2,opacity:0.8}}>🔒FIX</span><span style={{fontSize:"1.4em",fontWeight:900,lineHeight:1}}>{num}</span></>
         : <span style={{fontSize:"1.3em",fontWeight:900}}>{value}</span>}
+      {highest && <span style={{ position:"absolute", top:4, right:6, fontSize:10, color:"#f1c40f" }}>▲</span>}
     </div>
   );
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
-  const [lang, setLang]               = useState("de");
-  const [mode, setMode]               = useState("normal");
-  const [cards, setCards]             = useState(() => Array(MODES.normal.startCards).fill(null));
+  const [lang, setLang]               = useState(STORED.lang);
+  const [mode, setMode]               = useState(STORED.mode);
+  const [cards, setCards]             = useState(STORED.cards);
   const [openCard, setOpenCard]       = useState(null);
   const [toast, setToast]             = useState(null);
   const [shakingIdx, setShakingIdx]   = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [forgetChance, setForgetChance] = useState(0.25);
+  const [forgetChance, setForgetChance] = useState(STORED.forgetChance);
+  const [history, setHistory]         = useState(STORED.history);
   const [dlg, setDlg]                 = useState(null);
+
+  useEffect(() => { saveStore({ lang, mode, cards, forgetChance, history }); }, [lang, mode, cards, forgetChance, history]);
 
   const t = T[lang];
   const numbers = MODES[mode].numbers;
@@ -319,12 +440,20 @@ function App() {
   const askMode   = key => { if(key===mode) return; setShowSettings(false); setDlg({type:"mode", data:key}); };
   const askRemove = idx => { setOpenCard(null); setDlg({type:"remove", data:idx}); };
   const askReset  = ()  => { setDlg({type:"reset"}); };
+  const askRound  = ()  => { setDlg({type:"round"}); };
+  const askClearHistory = () => { setDlg({type:"clearHistory"}); };
 
   const confirmDlg = () => {
     const d = dlg; setDlg(null);
     if (d.type==="mode")   { setMode(d.data); setCards(Array(MODES[d.data].startCards).fill(null)); setOpenCard(null); }
     else if (d.type==="remove") { setCards(prev => prev.filter((_,i) => i!==d.data)); }
     else if (d.type==="reset")  { setCards(Array(MODES[mode].startCards).fill(null)); }
+    else if (d.type==="round")  {
+      setHistory(prev => [...prev, { sum, mode, date: Date.now() }]);
+      setCards(Array(MODES[mode].startCards).fill(null));
+      setToast({ msg: t.toastRoundSaved(history.length+1, fmtSigned(sum)), type:"ok" });
+    }
+    else if (d.type==="clearHistory") { setHistory([]); }
   };
 
   const saveCard = val => {
@@ -337,9 +466,14 @@ function App() {
       if (!targets.length) return;
       if (Math.random()<forgetChance) {
         const victim = targets[Math.floor(Math.random()*targets.length)];
+        const lost = next[victim];
         setCards(prev => { const n=[...prev]; n[victim]=FORGOT; return n; });
         setShakingIdx(victim); setTimeout(()=>setShakingIdx(null),500);
-        setToast({ msg: t.toastForgot(idx, victim), type:"forgot" });
+        const restore = () => {
+          setCards(prev => { if (!isForgot(prev[victim])) return prev; const n=[...prev]; n[victim]=lost; return n; });
+          setTimeout(() => setToast({ msg: t.toastRestored(victim), type:"ok" }), 50);
+        };
+        setToast({ msg: t.toastForgot(idx, victim), type:"forgot", action: { label: t.undo, onClick: restore } });
       }
     }, 300);
   };
@@ -349,11 +483,12 @@ function App() {
   const forgotC = cards.filter(isForgot).length;
   const pct     = Math.round(forgetChance*100);
 
-  const sum = cards.reduce((acc, v) => {
-    if (isNormal(v)) return acc + parseInt(v, 10);
-    if (isFix(v))    return acc + parseInt(fixNum(v), 10);
-    return acc;
-  }, 0);
+  const sum = cards.reduce((acc, v) => acc + (cardNum(v) ?? 0), 0);
+
+  // highest swappable card above the deck average gets a marker
+  const avgNum = numbers.reduce((a,b) => a+b, 0) / numbers.length;
+  let highestIdx = null;
+  cards.forEach((v,i) => { if (isNormal(v) && cardNum(v) > avgNum && (highestIdx===null || cardNum(v) > cardNum(cards[highestIdx]))) highestIdx = i; });
 
   return (
     <div style={{ minHeight:"100vh", background:"#0b0b0f", backgroundImage:"radial-gradient(ellipse at 15% 15%,rgba(255,107,53,0.06) 0%,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(90,10,30,0.1) 0%,transparent 55%)", display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 20px 48px", position:"relative" }}>
@@ -385,7 +520,7 @@ function App() {
 
       {/* Grid */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, width:"100%", maxWidth:300, marginBottom:20 }}>
-        {cards.map((val,idx) => <Card key={idx} value={val} index={idx} onClick={setOpenCard} shaking={shakingIdx===idx} />)}
+        {cards.map((val,idx) => <Card key={idx} value={val} index={idx} onClick={setOpenCard} shaking={shakingIdx===idx} highest={highestIdx===idx} />)}
       </div>
 
       {/* Hint */}
@@ -400,24 +535,34 @@ function App() {
 
       {/* Sum */}
       <div style={{ width:"100%", maxWidth:300, marginBottom:14, background:"#16161e", border:"1px solid #2a2a35", borderRadius:12, padding:"14px 0", textAlign:"center" }}>
-        <div style={{ fontSize:11, color:"#555", letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>∑ Summe</div>
+        <div style={{ fontSize:11, color:"#555", letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>{t.sum}</div>
         <div style={{ fontSize:36, fontWeight:900, fontFamily:"'Courier New',monospace", color: sum>0?"#ff6b35":sum<0?"#ff4d6d":"#666", textShadow: sum!==0?`0 0 20px ${sum>0?"rgba(255,107,53,0.4)":"rgba(255,77,109,0.4)"}`:""  }}>
           {sum>0?"+":""}{sum}
         </div>
       </div>
 
+      <Tips cards={cards} numbers={numbers} sum={sum} t={t} />
+
+      {/* Save round */}
+      <button onClick={askRound} style={{ background:"#0a2e1a", color:"#2ecc71", border:"2px solid #2ecc71", borderRadius:10, padding:"11px 0", fontSize:13, fontFamily:"'Courier New',monospace", fontWeight:900, cursor:"pointer", letterSpacing:2, marginBottom:10, width:"100%", maxWidth:300 }}>{t.saveRound}</button>
+
       {/* Reset */}
       <button onClick={askReset} style={{ background:"transparent", color:"#444", border:"1px solid #2a2a35", borderRadius:8, padding:"9px 22px", fontSize:12, fontFamily:"'Courier New',monospace", cursor:"pointer", letterSpacing:1 }}>{t.newGame}</button>
 
-      <div style={{ marginTop:28, fontSize:10, color:"#222", textAlign:"center" }}>{t.footer}</div>
+      <History history={history} onAskClear={askClearHistory} t={t} />
+
+      <div style={{ marginTop:14, fontSize:10, color:"#333", textAlign:"center" }}>{t.savedHint}</div>
+      <div style={{ marginTop:14, fontSize:10, color:"#222", textAlign:"center" }}>{t.footer}</div>
 
       {/* Overlays */}
       {showSettings && <SettingsPanel forgetChance={forgetChance} onChangeChance={setForgetChance} mode={mode} onChangeMode={askMode} lang={lang} onChangeLang={setLang} onClose={()=>setShowSettings(false)} t={t} />}
       {openCard!==null && <CardModal index={openCard} currentValue={cards[openCard]} numbers={numbers} onSave={saveCard} onAskRemove={askRemove} onClose={()=>setOpenCard(null)} t={t} />}
-      {toast && <Toast message={toast.msg} type={toast.type} onDone={()=>setToast(null)} />}
+      {toast && <Toast key={toast.msg} message={toast.msg} type={toast.type} action={toast.action} onDone={()=>setToast(null)} />}
 
       {dlg&&dlg.type==="remove" && <Dialog icon="🗑" title={t.removeTitle} message={t.removeMsg(dlg.data)} confirmLabel={t.removeConfirm} confirmColor="#ff4d6d" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
       {dlg&&dlg.type==="mode"   && <Dialog icon="🔀" title={t.switchTitle(MODES[dlg.data].label)} message={t.switchMsg(MODES[dlg.data].startCards)} confirmLabel={t.switchConfirm} confirmColor="#f1c40f" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
+      {dlg&&dlg.type==="round"  && <Dialog icon="💾" title={t.roundTitle} message={t.roundMsg(fmtSigned(sum))} confirmLabel={t.roundConfirm} confirmColor="#2ecc71" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
+      {dlg&&dlg.type==="clearHistory" && <Dialog icon="🗑" title={t.clearHistoryTitle} message={t.clearHistoryMsg} confirmLabel={t.clearHistoryConfirm} confirmColor="#ff4d6d" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
       {dlg&&dlg.type==="reset"  && <Dialog icon="↺" title={t.resetTitle} message={t.resetMsg} confirmLabel={t.resetConfirm} confirmColor="#ff6b35" cancelLabel={t.cancel} onConfirm={confirmDlg} onCancel={()=>setDlg(null)} />}
     </div>
   );
