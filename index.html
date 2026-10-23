@@ -117,6 +117,10 @@ const T = {
     clearHistoryMsg: "Alle gespeicherten Runden werden gelöscht.",
     clearHistoryConfirm: "Löschen",
     savedHint: "💾 wird automatisch gespeichert",
+    saveSettings: "💾 Einstellungen speichern",
+    settingsUpToDate: "✓ Gespeichert",
+    settingsSaved: "Einstellungen gespeichert ✓",
+    unsavedHint: "Nicht gespeichert – beim Schließen gehen die Änderungen verloren",
   },
   en: {
     tagline: "★ Memory Helper ★",
@@ -190,6 +194,10 @@ const T = {
     clearHistoryMsg: "All saved rounds will be deleted.",
     clearHistoryConfirm: "Clear",
     savedHint: "💾 saved automatically",
+    saveSettings: "💾 Save Settings",
+    settingsUpToDate: "✓ Saved",
+    settingsSaved: "Settings saved ✓",
+    unsavedHint: "Not saved – changes are lost when you close",
   }
 };
 
@@ -356,7 +364,12 @@ function History({ history, onAskClear, t }) {
 }
 
 // ── Settings Panel ────────────────────────────────────────────────────────────
-function SettingsPanel({ forgetChance, onChangeChance, mode, onChangeMode, lang, onChangeLang, onClose, t }) {
+// language and forgetfulness are edited as a draft and only applied with the save button
+function SettingsPanel({ forgetChance: savedChance, lang: savedLang, onSave, mode, onChangeMode, onClose }) {
+  const [forgetChance, onChangeChance] = useState(savedChance);
+  const [lang, onChangeLang] = useState(savedLang);
+  const t = T[lang];
+  const dirty = forgetChance !== savedChance || lang !== savedLang;
   const pct = Math.round(forgetChance * 100);
   const sc = pct===0?"#2ecc71":pct<30?"#f1c40f":pct<60?"#ff6b35":"#ff4d6d";
   const lbl = pct===0?t.forgetNever:pct<20?t.forgetRarely:pct<50?t.forgetSometimes:pct<80?t.forgetOften:t.forgetAlways;
@@ -421,6 +434,11 @@ function SettingsPanel({ forgetChance, onChangeChance, mode, onChangeMode, lang,
           </div>
         </div>
         <div style={{ marginTop:14, fontSize:10, color:"#333", textAlign:"center", lineHeight:1.7 }}>{t.forgetHint}</div>
+
+        <button onClick={() => dirty && onSave(lang, forgetChance)} style={{ width:"100%", marginTop:16, background:dirty?"#2ecc71":"#0a2e1a", color:dirty?"#000":"#2ecc7188", border:"2px solid #2ecc71", borderRadius:10, padding:"12px 0", fontSize:13, fontFamily:"'Courier New',monospace", fontWeight:900, cursor:dirty?"pointer":"default", letterSpacing:1, boxShadow:dirty?"0 0 16px rgba(46,204,113,0.4)":"none" }}>
+          {dirty ? t.saveSettings : t.settingsUpToDate}
+        </button>
+        {dirty && <div style={{ marginTop:8, fontSize:10, color:"#ff6b35", textAlign:"center", lineHeight:1.6 }}>{t.unsavedHint}</div>}
       </div>
     </>
   );
@@ -529,6 +547,11 @@ function App() {
     setPlaceMode(false);
   };
   const askReset  = ()  => { setDlg({type:"reset"}); };
+
+  const saveSettings = (newLang, newChance) => {
+    setLang(newLang); setForgetChance(newChance); setShowSettings(false);
+    setToast({ msg: T[newLang].settingsSaved, type:"ok" });
+  };
   const askRound  = ()  => { setDlg({type:"round"}); };
   const askClearHistory = () => { setDlg({type:"clearHistory"}); };
 
@@ -675,7 +698,7 @@ function App() {
       <div style={{ marginTop:14, fontSize:10, color:"#222", textAlign:"center" }}>{t.footer}</div>
 
       {/* Overlays */}
-      {showSettings && <SettingsPanel forgetChance={forgetChance} onChangeChance={setForgetChance} mode={mode} onChangeMode={askMode} lang={lang} onChangeLang={setLang} onClose={()=>setShowSettings(false)} t={t} />}
+      {showSettings && <SettingsPanel forgetChance={forgetChance} lang={lang} onSave={saveSettings} mode={mode} onChangeMode={askMode} onClose={()=>setShowSettings(false)} />}
       {openCard!==null && <CardModal index={openCard} currentValue={cards[openCard]} numbers={numbers} onSave={saveCard} onAskRemove={askRemove} onClose={()=>setOpenCard(null)} t={t} />}
       {toast && <Toast key={toast.msg} message={toast.msg} type={toast.type} action={toast.action} onDone={()=>setToast(null)} />}
 
