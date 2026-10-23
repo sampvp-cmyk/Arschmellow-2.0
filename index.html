@@ -585,14 +585,18 @@ function App() {
   let highestIdx = null;
   cards.forEach((v,i) => { if (isNormal(v) && cardNum(v) > avgNum && (highestIdx===null || cardNum(v) > cardNum(cards[highestIdx]))) highestIdx = i; });
 
-  // build the visible grid; in place mode it gets a ＋ row above and below,
-  // ＋ in every gap, and a ＋ column on each side while an extra column is still allowed
+  // build the visible grid; in place mode it gets ＋ in every gap, a ＋ column on each side
+  // while an extra column is still allowed, and a new ＋ row above/below only once
+  // the current top/bottom row is full
   const rows = Math.max(1, Math.ceil(cards.length / cols));
+  const padded = padRows(cards, cols);
+  const rowFull = r => padded.length > 0 && padded.slice(r*cols, (r+1)*cols).every(v => !isGap(v));
   const side = placeMode && cols < MAX_COLS ? 1 : 0;
-  const extraRow = placeMode ? 1 : 0;
+  const topRow = placeMode && rowFull(0) ? 1 : 0;
+  const bottomRow = placeMode && rowFull(rows-1) ? 1 : 0;
   const dispCols = cols + 2*side;
   const cells = [];
-  for (let r = -extraRow; r < rows + extraRow; r++) {
+  for (let r = -topRow; r < rows + bottomRow; r++) {
     for (let c = -side; c < cols + side; c++) {
       const key = r + ":" + c;
       const inRow = r >= 0 && r < rows, inCol = c >= 0 && c < cols;
